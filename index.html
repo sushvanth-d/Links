@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Links</title>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        input, button, select { margin: 10px; padding: 10px; }
+        ul { list-style: none; padding: 0; }
+        li { margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>My Links</h1>
+    <input type="text" id="nameInput" placeholder="Enter link name">
+    <input type="text" id="linkInput" placeholder="Enter a link">
+    <input type="text" id="categoryInput" placeholder="Enter category">
+    <button onclick="addLink()">Add Link</button>
+    <h2>Categories</h2>
+    <select id="categorySelect" onchange="loadLinks()">
+        <option value="">All</option>
+    </select>
+    <ul id="linkList"></ul>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        // Add new link to Firestore
+        function addLink() {
+            const name = document.getElementById("nameInput").value.trim();
+            const link = document.getElementById("linkInput").value.trim();
+            const category = document.getElementById("categoryInput").value.trim();
+            if (name && link && category) {
+                db.collection("links").add({ name, url: link, category })
+                .then(() => {
+                    document.getElementById("nameInput").value = "";
+                    document.getElementById("linkInput").value = "";
+                    document.getElementById("categoryInput").value = "";
+                    loadCategories();
+                    loadLinks();
+                });
+            }
+        }
+
+        // Load links from Firestore
+        function loadLinks() {
+            const linkList = document.getElementById("linkList");
+            linkList.innerHTML = "";
+            const selectedCategory = document.getElementById("categorySelect").value;
+            let query = db.collection("links");
+            if (selectedCategory) {
+                query = query.where("category", "==", selectedCategory);
+            }
+            query.get().then((querySnapshot) => {
+                querySnapshot.forEach((doc) => {
+                    const li = document.createElement("li");
+                    const a = document.createElement("a");
+                    a.href = doc.data().url;
+                    a.textContent = `${doc.data().name} - ${doc.data().url}`;
+                    a.target = "_blank";
+                    li.appendChild(a);
+                    linkList.appendChild(li);
+                });
+            });
+        }
+
+        // Load categories dynamically
+        function loadCategories() {
+            const categorySelect = document.getElementById("categorySelect");
+            categorySelect.innerHTML = '<option value="">All</option>';
+            const categories = new Set();
+            db.collection("links").get().then((querySnapshot) => {
+                querySnapshot.forEach((doc) => {
+                    categories.add(doc.data().category);
+                });
+                categories.forEach(category => {
+                    const option = document.createElement("option");
+                    option.value = category;
+                    option.textContent = category;
+                    categorySelect.appendChild(option);
+                });
+            });
+        }
+
+        // Load links and categories on page load
+        window.onload = function() {
+            loadCategories();
+            loadLinks();
+        };
+    </script>
+</body>
+</html>
