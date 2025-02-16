@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Links</title>
-    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
-    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -70,49 +68,59 @@
     </select>
     <ul id="linkList"></ul>
 
-    <script>
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    
         // Firebase configuration
         const firebaseConfig = {
-    apiKey: "AIzaSyDUoWztgPgZfEAVXs4_E3LnOwK0I-uGpdk",
-    authDomain: "links-manger.firebaseapp.com",
-    projectId: "links-manger",
-    storageBucket: "links-manger.firebasestorage.app",
-    messagingSenderId: "947928555709",
-    appId: "1:947928555709:web:70f1b67765ac3d5b2d57d4",
-    measurementId: "G-8JJZZVK2E7"
-  };
-        
+            apiKey: "AIzaSyDUoWztgPgZfEAVXs4_E3LnOwK0I-uGpdk",
+            authDomain: "links-manger.firebaseapp.com",
+            projectId: "links-manger",
+            storageBucket: "links-manger.firebasestorage.app",
+            messagingSenderId: "947928555709",
+            appId: "1:947928555709:web:70f1b67765ac3d5b2d57d4",
+            measurementId: "G-8JJZZVK2E7"
+        };
+    
         // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        
-        // Add new link to Firestore
-        function addLink() {
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+    
+        // Function to add a link to Firestore
+        async function addLink() {
             const name = document.getElementById("nameInput").value.trim();
             const link = document.getElementById("linkInput").value.trim();
             const category = document.getElementById("categoryInput").value.trim();
+    
             if (name && link && category) {
-                db.collection("links").add({ name, url: link, category })
-                .then(() => {
+                try {
+                    await addDoc(collection(db, "links"), { name, url: link, category });
                     document.getElementById("nameInput").value = "";
                     document.getElementById("linkInput").value = "";
                     document.getElementById("categoryInput").value = "";
                     loadCategories();
                     loadLinks();
-                });
+                } catch (error) {
+                    console.error("Error adding document: ", error);
+                }
             }
         }
-
+    
         // Load links from Firestore
-        function loadLinks() {
+        async function loadLinks() {
             const linkList = document.getElementById("linkList");
             linkList.innerHTML = "";
             const selectedCategory = document.getElementById("categorySelect").value;
-            let query = db.collection("links");
+    
+            let q = collection(db, "links");
             if (selectedCategory) {
-                query = query.where("category", "==", selectedCategory);
+                q = query(q, where("category", "==", selectedCategory));
             }
-            query.get().then((querySnapshot) => {
+    
+            try {
+                const querySnapshot = await getDocs(q);
                 querySnapshot.forEach((doc) => {
                     const li = document.createElement("li");
                     const a = document.createElement("a");
@@ -122,15 +130,19 @@
                     li.appendChild(a);
                     linkList.appendChild(li);
                 });
-            });
+            } catch (error) {
+                console.error("Error loading documents: ", error);
+            }
         }
-
+    
         // Load categories dynamically
-        function loadCategories() {
+        async function loadCategories() {
             const categorySelect = document.getElementById("categorySelect");
             categorySelect.innerHTML = '<option value="">All</option>';
             const categories = new Set();
-            db.collection("links").get().then((querySnapshot) => {
+    
+            try {
+                const querySnapshot = await getDocs(collection(db, "links"));
                 querySnapshot.forEach((doc) => {
                     categories.add(doc.data().category);
                 });
@@ -140,19 +152,26 @@
                     option.textContent = category;
                     categorySelect.appendChild(option);
                 });
-            });
+            } catch (error) {
+                console.error("Error loading categories: ", error);
+            }
         }
-
+    
         // Toggle Dark/Light Theme
         function toggleTheme() {
             document.body.classList.toggle("light-theme");
         }
-
+    
         // Load links and categories on page load
         window.onload = function() {
             loadCategories();
             loadLinks();
         };
+    
+        // Attach functions to window object so buttons can call them
+        window.addLink = addLink;
+        window.toggleTheme = toggleTheme;
     </script>
+    
 </body>
 </html>
